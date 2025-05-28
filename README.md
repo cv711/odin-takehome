@@ -39,4 +39,4 @@ ok      github.com/cv711/odin-takehome/server/api       0.551s  coverage: 63.6% 
 ok      github.com/cv711/odin-takehome/server/internal  0.377s  coverage: 83.3% of statements
 ```
 
-for more info check [coverage.html](./coverage.html)
+for more info open in a browser [coverage.html](./coverage.html)
