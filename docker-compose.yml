@@ -1,0 +1,28 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: odin
+      POSTGRES_PASSWORD: exercise
+      POSTGRES_DB: odinexercise
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      PG_USER: odin
+      PG_PASSWORD: exercise
+      PG_DB: odinexercise
+      PG_HOST: db
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+
+volumes:
+  postgres_data:
+    external: false

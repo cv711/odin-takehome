@@ -1,0 +1,862 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>api: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/cv711/odin-takehome/server/api/api.go (42.1%)</option>
+				
+				<option value="file1">github.com/cv711/odin-takehome/server/api/auth_routes.go (69.8%)</option>
+				
+				<option value="file2">github.com/cv711/odin-takehome/server/api/middlewares.go (71.4%)</option>
+				
+				<option value="file3">github.com/cv711/odin-takehome/server/api/user.go (61.1%)</option>
+				
+				<option value="file4">github.com/cv711/odin-takehome/server/db/db.go (0.0%)</option>
+				
+				<option value="file5">github.com/cv711/odin-takehome/server/db/login_attempts.sql.go (0.0%)</option>
+				
+				<option value="file6">github.com/cv711/odin-takehome/server/db/migrate.go (0.0%)</option>
+				
+				<option value="file7">github.com/cv711/odin-takehome/server/db/pool.go (0.0%)</option>
+				
+				<option value="file8">github.com/cv711/odin-takehome/server/db/users.sql.go (0.0%)</option>
+				
+				<option value="file9">github.com/cv711/odin-takehome/server/internal/jwt.go (80.0%)</option>
+				
+				<option value="file10">github.com/cv711/odin-takehome/server/internal/password_hashing.go (85.7%)</option>
+				
+				<option value="file11">github.com/cv711/odin-takehome/server/main.go (0.0%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package api
+
+import (
+        "log/slog"
+        "os"
+
+        "github.com/cv711/odin-takehome/server/db"
+        "github.com/gin-gonic/gin"
+)
+
+type API struct {
+        log           *slog.Logger
+        db            *db.Queries
+        adminPassword string
+}
+
+func NewAPI(log *slog.Logger, db *db.Queries) *API <span class="cov8" title="1">{
+        return &amp;API{
+                log:           log,
+                db:            db,
+                adminPassword: os.Getenv("ADMIN_PASSWORD"),
+        }
+}</span>
+
+func (a *API) setupRoutes(router *gin.Engine) *gin.Engine <span class="cov8" title="1">{
+        apiRouter := router.Group("/api")
+        apiRouter.GET("/health", func(c *gin.Context) </span><span class="cov8" title="1">{
+                c.JSON(200, gin.H{
+                        "status": "ok",
+                })
+        }</span>)
+
+        <span class="cov8" title="1">apiRouter.POST("/auth", a.auth)
+        apiRouter.POST("/signup", a.signup)
+        apiRouter.GET("/user", a.authRoute, a.getUser)
+
+        return router</span>
+}
+
+func (a *API) Serve() <span class="cov0" title="0">{
+        a.log.Info("Server starting...")
+        gin.SetMode(gin.ReleaseMode)
+        server := gin.New()
+        server.Use(gin.Recovery())
+
+        server = a.setupRoutes(server)
+
+        port, portSet := os.LookupEnv("PORT")
+        if !portSet </span><span class="cov0" title="0">{
+                port = "8080"
+        }</span>
+
+        <span class="cov0" title="0">a.log.Info("Listening on port " + port)
+        if err := server.Run(":" + port); err != nil </span><span class="cov0" title="0">{
+                panic(err)</span>
+        }
+}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package api
+
+import (
+        "net/http"
+        "net/netip"
+        "strings"
+
+        "github.com/cv711/odin-takehome/server/db"
+        "github.com/cv711/odin-takehome/server/internal"
+        "github.com/gin-gonic/gin"
+)
+
+type AuthRequest struct {
+        Email    string `json:"email"`
+        Password string `json:"password"`
+}
+
+func (a *API) auth(c *gin.Context) <span class="cov8" title="1">{
+        var authRequest AuthRequest
+        if err := c.BindJSON(&amp;authRequest); err != nil </span><span class="cov0" title="0">{
+                c.JSON(400, gin.H{
+                        "error": "invalid request",
+                })
+                return
+        }</span>
+        <span class="cov8" title="1">if authRequest.Email == "" || authRequest.Password == "" </span><span class="cov0" title="0">{
+                c.JSON(401, gin.H{
+                        "error": "unauthorized",
+                })
+                return
+        }</span>
+
+        <span class="cov8" title="1">a.rateLimiter(c, authRequest)
+
+        dbUser, err := a.db.LookupUser(c.Request.Context(), authRequest.Email)
+        if err != nil </span><span class="cov8" title="1">{
+                c.JSON(401, gin.H{
+                        "error": "unauthorized",
+                })
+                return
+        }</span>
+
+        <span class="cov8" title="1">verified := internal.VerifyPassword(dbUser.PasswordHash, authRequest.Password)
+        if !verified </span><span class="cov8" title="1">{
+                c.JSON(401, gin.H{
+                        "error": "unauthorized",
+                })
+                return
+        }</span>
+
+        <span class="cov8" title="1">c.SetSameSite(http.SameSiteStrictMode)
+
+        dbUserID, err := dbUser.ID.Value()
+        if err != nil </span><span class="cov0" title="0">{
+                c.JSON(500, gin.H{
+                        "error": "something went wrong",
+                })
+                return
+        }</span>
+
+        <span class="cov8" title="1">jwtToken, err := internal.GenerateJWTToken(dbUserID.(string))
+        if err != nil </span><span class="cov0" title="0">{
+                c.JSON(500, gin.H{
+                        "error": "something went wrong",
+                })
+                return
+        }</span>
+        <span class="cov8" title="1">c.JSON(200, gin.H{
+                "token": jwtToken,
+        })</span>
+}
+
+func (a *API) rateLimiter(c *gin.Context, authRequest AuthRequest) <span class="cov8" title="1">{
+        remoteIP := strings.Split(c.ClientIP(), ":")[0]
+
+        // Validate the IP address format
+        parsedIP, err := netip.ParseAddr(remoteIP)
+        if err != nil </span><span class="cov0" title="0">{
+                a.log.Warn("Invalid IP address format", "ip", remoteIP, "error", err)
+                c.JSON(400, gin.H{
+                        "error": "invalid IP address",
+                })
+                return
+        }</span>
+
+        <span class="cov8" title="1">row, err := a.db.GetCounts(c.Request.Context(), db.GetCountsParams{
+                RemoteIp: parsedIP.AsSlice(),
+                Email:    authRequest.Email,
+        })
+        if err != nil </span><span class="cov0" title="0">{
+                a.log.Error("Failed to get counts for rate limiting", "error", err)
+                c.JSON(500, gin.H{
+                        "error": "internal server error",
+                })
+                return
+        }</span>
+
+        <span class="cov8" title="1">if row.GlobalCount &gt; 300 </span><span class="cov8" title="1">{
+                c.JSON(429, gin.H{
+                        "error": "Too many attempts globally",
+                })
+                c.Abort()
+                return
+        }</span>
+
+        <span class="cov8" title="1">if row.IpCount &gt; 25 </span><span class="cov8" title="1">{
+                c.JSON(429, gin.H{
+                        "error": "Too many attempts from this IP",
+                })
+                c.Abort()
+                return
+        }</span>
+
+        <span class="cov8" title="1">if row.EmailCount &gt; 10 </span><span class="cov8" title="1">{
+                c.JSON(429, gin.H{
+                        "error": "Too many attempts for this email",
+                })
+                c.Abort()
+                return
+        }</span>
+
+        <span class="cov8" title="1">_, err = a.db.LogAttempt(c.Request.Context(), db.LogAttemptParams{
+                Email:    authRequest.Email,
+                RemoteIp: parsedIP.AsSlice(),
+        })
+        if err != nil </span><span class="cov0" title="0">{
+                a.log.Error("Failed to log auth attempt", "error", err)
+                c.JSON(500, gin.H{
+                        "error": "something went wrong",
+                })
+        }</span>
+}
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package api
+
+import (
+        "strings"
+
+        "github.com/cv711/odin-takehome/server/internal"
+        "github.com/gin-gonic/gin"
+)
+
+func (a *API) authRoute(c *gin.Context) <span class="cov8" title="1">{
+        tokenString := c.GetHeader("Authorization")
+        if tokenString == "" </span><span class="cov8" title="1">{
+                c.JSON(401, gin.H{
+                        "error": "unauthorized",
+                })
+                c.Abort()
+                return
+        }</span>
+
+        <span class="cov8" title="1">jwtToken := strings.TrimPrefix(tokenString, "Bearer ")
+        if jwtToken == "" </span><span class="cov0" title="0">{
+                c.JSON(401, gin.H{
+                        "error": "unauthorized",
+                })
+                c.Abort()
+                return
+        }</span>
+        // Validate the JWT token
+        <span class="cov8" title="1">claims, err := internal.ValidateJWTToken(jwtToken)
+        if err != nil </span><span class="cov8" title="1">{
+                a.log.Debug("Failed to get validate JWT: " + err.Error())
+                c.JSON(401, gin.H{
+                        "error": "unauthorized",
+                })
+                c.Abort()
+                return
+        }</span>
+
+        // Check if the token issuer is valid
+        <span class="cov8" title="1">if claims.Issuer != internal.TokenIssuer </span><span class="cov0" title="0">{
+                c.JSON(401, gin.H{
+                        "error": "unauthorized",
+                })
+                c.Abort()
+                return
+        }</span>
+
+        // Store the user ID in the context
+        <span class="cov8" title="1">c.Set("current_user_id", claims.Subject)</span>
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package api
+
+import (
+        "github.com/cv711/odin-takehome/server/db"
+        "github.com/cv711/odin-takehome/server/internal"
+        "github.com/gin-gonic/gin"
+        "github.com/jackc/pgx/v5/pgtype"
+)
+
+type signupRequest struct {
+        Email    string `json:"email"`
+        Password string `json:"password"`
+}
+
+func (a *API) signup(c *gin.Context) <span class="cov8" title="1">{
+        var req signupRequest
+        if err := c.BindJSON(&amp;req); err != nil </span><span class="cov0" title="0">{
+                c.JSON(400, gin.H{
+                        "error": "bad request",
+                })
+                return
+        }</span>
+
+        <span class="cov8" title="1">if req.Email == "" || req.Password == "" </span><span class="cov8" title="1">{
+                c.JSON(400, gin.H{
+                        "error": "bad request",
+                })
+                return
+        }</span>
+
+        <span class="cov8" title="1">passworHash, err := internal.HashPassword(req.Password)
+        if err != nil </span><span class="cov0" title="0">{
+                c.JSON(500, gin.H{
+                        "error": "internal server error",
+                })
+                return
+        }</span>
+
+        // Check if the email already exists
+        <span class="cov8" title="1">if user, err := a.db.LookupUser(c.Request.Context(), req.Email); err == nil &amp;&amp; user.ID.Valid </span><span class="cov8" title="1">{
+                c.JSON(400, gin.H{
+                        "error": "email already exists",
+                })
+                return
+        }</span>
+
+        // Create the user
+        <span class="cov8" title="1">if _, err := a.db.CreateUser(c.Request.Context(), db.CreateUserParams{
+                Email:        req.Email,
+                PasswordHash: passworHash,
+        }); err != nil </span><span class="cov0" title="0">{
+                a.log.Error("Failed to create user", "error", err)
+                c.JSON(500, gin.H{
+                        "error": "internal server error",
+                })
+                return
+        }</span>
+
+        <span class="cov8" title="1">c.JSON(200, gin.H{
+                "status": "ok",
+        })</span>
+}
+
+func (a *API) getUser(c *gin.Context) <span class="cov8" title="1">{
+        userID, err := a.getUserIDFromContext(c)
+        if err != nil </span><span class="cov0" title="0">{
+                c.JSON(400, gin.H{
+                        "error": "bad request",
+                })
+                return
+        }</span>
+
+        <span class="cov8" title="1">user, err := a.db.GetUser(c.Request.Context(), userID)
+        if err != nil </span><span class="cov0" title="0">{
+                c.JSON(401, gin.H{
+                        "error": "unauthorized",
+                })
+                return
+        }</span>
+
+        <span class="cov8" title="1">id, err := user.ID.Value()
+        if err != nil </span><span class="cov0" title="0">{
+                c.JSON(500, gin.H{
+                        "error": "internal server error",
+                })
+                return
+        }</span>
+
+        <span class="cov8" title="1">c.JSON(200, gin.H{
+                "id":         id,
+                "email":      user.Email,
+                "created_at": user.CreatedAt,
+        })</span>
+}
+
+func (a *API) getUserIDFromContext(c *gin.Context) (pgtype.UUID, error) <span class="cov8" title="1">{
+        var userID pgtype.UUID
+        if err := userID.Scan(c.GetString("current_user_id")); err != nil </span><span class="cov0" title="0">{
+                return userID, err
+        }</span>
+        <span class="cov8" title="1">return userID, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">// Code generated by sqlc. DO NOT EDIT.
+// versions:
+//   sqlc v1.28.0
+
+package db
+
+import (
+        "context"
+
+        "github.com/jackc/pgx/v5"
+        "github.com/jackc/pgx/v5/pgconn"
+)
+
+type DBTX interface {
+        Exec(context.Context, string, ...interface{}) (pgconn.CommandTag, error)
+        Query(context.Context, string, ...interface{}) (pgx.Rows, error)
+        QueryRow(context.Context, string, ...interface{}) pgx.Row
+}
+
+func New(db DBTX) *Queries <span class="cov0" title="0">{
+        return &amp;Queries{db: db}
+}</span>
+
+type Queries struct {
+        db DBTX
+}
+
+func (q *Queries) WithTx(tx pgx.Tx) *Queries <span class="cov0" title="0">{
+        return &amp;Queries{
+                db: tx,
+        }
+}</span>
+</pre>
+		
+		<pre class="file" id="file5" style="display: none">// Code generated by sqlc. DO NOT EDIT.
+// versions:
+//   sqlc v1.28.0
+// source: login_attempts.sql
+
+package db
+
+import (
+        "context"
+)
+
+const getCounts = `-- name: GetCounts :one
+SELECT
+    COUNT(*) as global_count,
+    COALESCE(SUM(CASE WHEN email = $1 THEN 1 ELSE 0 END),0)::BIGINT as email_count,
+    COALESCE(SUM(CASE WHEN remote_ip = $2 THEN 1 ELSE 0 END),0)::BIGINT as ip_count
+FROM login_attempts
+WHERE login_attempt_time &gt;= NOW() - INTERVAL '10 SECOND'
+`
+
+type GetCountsParams struct {
+        Email    string `json:"email"`
+        RemoteIp []byte `json:"remote_ip"`
+}
+
+type GetCountsRow struct {
+        GlobalCount int64 `json:"global_count"`
+        EmailCount  int64 `json:"email_count"`
+        IpCount     int64 `json:"ip_count"`
+}
+
+func (q *Queries) GetCounts(ctx context.Context, arg GetCountsParams) (GetCountsRow, error) <span class="cov0" title="0">{
+        row := q.db.QueryRow(ctx, getCounts, arg.Email, arg.RemoteIp)
+        var i GetCountsRow
+        err := row.Scan(&amp;i.GlobalCount, &amp;i.EmailCount, &amp;i.IpCount)
+        return i, err
+}</span>
+
+const logAttempt = `-- name: LogAttempt :one
+INSERT INTO login_attempts (email, remote_ip) VALUES ($1, $2) RETURNING email, remote_ip, login_attempt_time
+`
+
+type LogAttemptParams struct {
+        Email    string `json:"email"`
+        RemoteIp []byte `json:"remote_ip"`
+}
+
+func (q *Queries) LogAttempt(ctx context.Context, arg LogAttemptParams) (LoginAttempt, error) <span class="cov0" title="0">{
+        row := q.db.QueryRow(ctx, logAttempt, arg.Email, arg.RemoteIp)
+        var i LoginAttempt
+        err := row.Scan(&amp;i.Email, &amp;i.RemoteIp, &amp;i.LoginAttemptTime)
+        return i, err
+}</span>
+</pre>
+		
+		<pre class="file" id="file6" style="display: none">package db
+
+import (
+        "database/sql"
+        "embed"
+
+        "github.com/pressly/goose/v3"
+)
+
+//go:embed migrations/*.sql
+var embedMigrations embed.FS
+
+func (q *Queries) Migrate(db *sql.DB) error <span class="cov0" title="0">{
+        goose.SetBaseFS(embedMigrations)
+        if err := goose.SetDialect("postgres"); err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov0" title="0">return goose.Up(db, "migrations")</span>
+}
+</pre>
+		
+		<pre class="file" id="file7" style="display: none">package db
+
+import (
+        "context"
+        "fmt"
+        "log/slog"
+        "os"
+        "time"
+
+        "github.com/jackc/pgx/v5/pgxpool"
+)
+
+func NewPool(ctx context.Context, log *slog.Logger) *pgxpool.Pool <span class="cov0" title="0">{
+        _, isProduction := os.LookupEnv("IS_PROD")
+
+        log.Info("Connecting to database...")
+        pgUser, found := os.LookupEnv("PG_USER")
+        if !found || pgUser == "" </span><span class="cov0" title="0">{
+                pgUser = "odin"
+        }</span>
+        <span class="cov0" title="0">pgPassword, found := os.LookupEnv("PG_PASSWORD")
+        if !found || pgPassword == "" </span><span class="cov0" title="0">{
+                pgPassword = "exercise"
+        }</span>
+        <span class="cov0" title="0">pgHost, hasPgHostEnv := os.LookupEnv("PG_HOST")
+        if !hasPgHostEnv </span><span class="cov0" title="0">{
+                pgHost = "localhost"
+        }</span>
+        <span class="cov0" title="0">pgDatabase, found := os.LookupEnv("PG_DATABASE")
+        if !found || pgDatabase == "" </span><span class="cov0" title="0">{
+                pgDatabase = "odinexercise"
+        }</span>
+
+        <span class="cov0" title="0">pingTimeout := 100 * time.Millisecond
+        if isProduction </span><span class="cov0" title="0">{
+                pingTimeout = 5 * time.Second
+        }</span>
+
+        // Create a new connection pool to the database
+        <span class="cov0" title="0">dbPool, err := pgxpool.New(ctx, fmt.Sprintf(`postgres://%s:%s@%s:5432/%s`, pgUser, pgPassword, pgHost, pgDatabase))
+        if err != nil </span><span class="cov0" title="0">{
+                log.ErrorContext(ctx, "Failed to connect to database: "+err.Error())
+                return nil
+        }</span>
+
+        <span class="cov0" title="0">pingCtx, cancel := context.WithTimeout(ctx, pingTimeout)
+        defer cancel()
+        if dbPool.Ping(pingCtx) != nil </span><span class="cov0" title="0">{
+                log.Error("Failed to connect to database at " + pgHost + ": ping failed")
+                return nil
+        }</span>
+        <span class="cov0" title="0">log.Info("Database connected.")
+
+        return dbPool</span>
+}
+</pre>
+		
+		<pre class="file" id="file8" style="display: none">// Code generated by sqlc. DO NOT EDIT.
+// versions:
+//   sqlc v1.28.0
+// source: users.sql
+
+package db
+
+import (
+        "context"
+
+        "github.com/jackc/pgx/v5/pgtype"
+)
+
+const createUser = `-- name: CreateUser :one
+INSERT INTO users (email, password_hash) VALUES ($1, $2) RETURNING id, email, password_hash, created_at, updated_at
+`
+
+type CreateUserParams struct {
+        Email        string `json:"email"`
+        PasswordHash string `json:"password_hash"`
+}
+
+func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) <span class="cov0" title="0">{
+        row := q.db.QueryRow(ctx, createUser, arg.Email, arg.PasswordHash)
+        var i User
+        err := row.Scan(
+                &amp;i.ID,
+                &amp;i.Email,
+                &amp;i.PasswordHash,
+                &amp;i.CreatedAt,
+                &amp;i.UpdatedAt,
+        )
+        return i, err
+}</span>
+
+const deleteAllUsers = `-- name: DeleteAllUsers :exec
+TRUNCATE TABLE users
+`
+
+func (q *Queries) DeleteAllUsers(ctx context.Context) error <span class="cov0" title="0">{
+        _, err := q.db.Exec(ctx, deleteAllUsers)
+        return err
+}</span>
+
+const deleteUser = `-- name: DeleteUser :exec
+DELETE FROM users WHERE id = $1
+`
+
+func (q *Queries) DeleteUser(ctx context.Context, id pgtype.UUID) error <span class="cov0" title="0">{
+        _, err := q.db.Exec(ctx, deleteUser, id)
+        return err
+}</span>
+
+const getUser = `-- name: GetUser :one
+SELECT id, email, password_hash, created_at, updated_at FROM users WHERE id = $1 LIMIT 1
+`
+
+func (q *Queries) GetUser(ctx context.Context, id pgtype.UUID) (User, error) <span class="cov0" title="0">{
+        row := q.db.QueryRow(ctx, getUser, id)
+        var i User
+        err := row.Scan(
+                &amp;i.ID,
+                &amp;i.Email,
+                &amp;i.PasswordHash,
+                &amp;i.CreatedAt,
+                &amp;i.UpdatedAt,
+        )
+        return i, err
+}</span>
+
+const lookupUser = `-- name: LookupUser :one
+SELECT id, email, password_hash, created_at, updated_at FROM users WHERE email = $1 LIMIT 1
+`
+
+func (q *Queries) LookupUser(ctx context.Context, email string) (User, error) <span class="cov0" title="0">{
+        row := q.db.QueryRow(ctx, lookupUser, email)
+        var i User
+        err := row.Scan(
+                &amp;i.ID,
+                &amp;i.Email,
+                &amp;i.PasswordHash,
+                &amp;i.CreatedAt,
+                &amp;i.UpdatedAt,
+        )
+        return i, err
+}</span>
+</pre>
+		
+		<pre class="file" id="file9" style="display: none">package internal
+
+import (
+        "time"
+
+        "github.com/dgrijalva/jwt-go"
+)
+
+const (
+        secretKey           = "supersecretkey"
+        tokenExpirationTime = 15 * time.Minute
+        TokenIssuer         = "odin-takehome"
+)
+
+func GenerateJWTToken(userId string) (string, error) <span class="cov8" title="1">{
+        claims := jwt.StandardClaims{
+                ExpiresAt: time.Now().Add(tokenExpirationTime).Unix(),
+                Issuer:    TokenIssuer,
+                Subject:   userId,
+        }
+
+        token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+        return token.SignedString([]byte(secretKey))
+}</span>
+
+func ValidateJWTToken(tokenString string) (*jwt.StandardClaims, error) <span class="cov8" title="1">{
+        token, err := jwt.ParseWithClaims(
+                tokenString,
+                &amp;jwt.StandardClaims{},
+                func(token *jwt.Token) (interface{}, error) </span><span class="cov8" title="1">{
+                        return []byte(secretKey), nil
+                }</span>,
+        )
+
+        <span class="cov8" title="1">if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">if claims, ok := token.Claims.(*jwt.StandardClaims); ok &amp;&amp; token.Valid </span><span class="cov8" title="1">{
+                return claims, nil
+        }</span>
+
+        <span class="cov0" title="0">return nil, jwt.ErrSignatureInvalid</span>
+}
+</pre>
+		
+		<pre class="file" id="file10" style="display: none">package internal
+
+import (
+        "crypto/rand"
+        "crypto/subtle"
+        "encoding/hex"
+        "fmt"
+
+        "golang.org/x/crypto/argon2"
+)
+
+func HashPassword(password string) (string, error) <span class="cov8" title="1">{
+        salt := make([]byte, 32)
+        _, err := rand.Read(salt)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", err
+        }</span>
+
+        <span class="cov8" title="1">hash := argon2.IDKey([]byte(password), salt, 1, 64*1024, 4, 32)
+
+        // Combine salt and hash for storage
+        combined := append(salt, hash...)
+        return fmt.Sprintf("%x", combined), nil</span>
+}
+
+func VerifyPassword(storedHash string, password string) bool <span class="cov8" title="1">{
+        combined, err := hex.DecodeString(storedHash)
+        if err != nil </span><span class="cov0" title="0">{
+                return false
+        }</span>
+
+        <span class="cov8" title="1">salt := combined[:32]
+        storedHashBytes := combined[32:]
+
+        // Generate new hash
+        newHash := argon2.IDKey([]byte(password), salt, 1, 64*1024, 4, 32)
+
+        // Compare hashes securely
+        return subtle.ConstantTimeCompare(newHash, storedHashBytes) == 1</span>
+}
+</pre>
+		
+		<pre class="file" id="file11" style="display: none">package main
+
+import (
+        "context"
+        "log/slog"
+        "os"
+
+        "github.com/cv711/odin-takehome/server/api"
+        "github.com/cv711/odin-takehome/server/db"
+        "github.com/dusted-go/logging/prettylog"
+        "github.com/jackc/pgx/v5/stdlib"
+)
+
+func main() <span class="cov0" title="0">{
+        _, isProduction := os.LookupEnv("IS_PROD")
+        var log *slog.Logger
+        if isProduction </span><span class="cov0" title="0">{
+                log = slog.New(slog.NewJSONHandler(os.Stdout, &amp;slog.HandlerOptions{
+                        Level:       slog.LevelInfo,
+                        AddSource:   false,
+                        ReplaceAttr: nil,
+                }))
+        }</span> else<span class="cov0" title="0"> {
+                log = slog.New(prettylog.NewHandler(&amp;slog.HandlerOptions{
+                        Level:       slog.LevelDebug,
+                        AddSource:   false,
+                        ReplaceAttr: nil,
+                }))
+        }</span>
+
+        <span class="cov0" title="0">ctx := context.Background()
+        dbPool := db.NewPool(ctx, log)
+        if dbPool == nil </span><span class="cov0" title="0">{
+                log.Error("Failed to create database pool")
+                os.Exit(1)
+        }</span>
+
+        <span class="cov0" title="0">internalDb := db.New(dbPool)
+        if err := internalDb.Migrate(stdlib.OpenDBFromPool(dbPool)); err != nil </span><span class="cov0" title="0">{
+                log.Error("Failed to migrate database: " + err.Error())
+                os.Exit(1)
+        }</span>
+
+        <span class="cov0" title="0">api.NewAPI(log, internalDb).Serve()</span>
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>
